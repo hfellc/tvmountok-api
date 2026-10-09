@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0b0b10">
+<title>TV Mount OK Admin</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/panel.css">
+</head>
+<body>
+<main id="login" hidden>
+  <form id="loginForm" class="card login">
+    <h1><span class="dot"></span>tvmountok admin</h1>
+    <label>Password<input id="pw" type="password" autocomplete="current-password" required autofocus></label>
+    <button class="btn primary" type="submit">Sign in</button>
+    <p id="loginMsg" class="err" role="alert"></p>
+  </form>
+</main>
+<div id="app" hidden>
+  <header class="top">
+    <div class="brand"><span class="dot"></span>tvmountok <span class="muted">admin</span></div>
+    <button id="logout" class="btn ghost" type="button">Sign out</button>
+  </header>
+  <div class="layout">
+    <section class="list">
+      <div class="tabs" id="tabs"></div>
+      <input id="search" type="search" placeholder="Search name, phone, town" aria-label="Search leads">
+      <ul id="leads" class="leads"></ul>
+    </section>
+    <section class="detail" id="detail"><p class="muted pad">Select a lead.</p></section>
+  </div>
+</div>
+<script src="/panel.js" type="module"></script>
+</body>
+</html>
