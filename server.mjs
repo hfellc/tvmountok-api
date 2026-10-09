@@ -15,6 +15,7 @@ const ORIGINS = (env.ALLOWED_ORIGINS || 'https://tvmountok.com,https://www.tvmou
 const SIGNAL_URL = env.SIGNAL_URL || '';
 const SIGNAL_NUMBER = env.SIGNAL_NUMBER || '';
 const SIGNAL_RECIPIENTS = (env.SIGNAL_RECIPIENTS || '').split(',').map((s) => s.trim()).filter(Boolean);
+const TURNSTILE_SECRET = env.TURNSTILE_SECRET || '';
 const PANEL_URL = env.PANEL_URL || 'https://admin.tvmountok.com';
 const PUBLIC_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), 'public');
 
@@ -115,6 +116,20 @@ export async function signal(text) {
   } catch (e) { console.error('signal error', e.message); return false; }
 }
 
+// ---- Cloudflare Turnstile ----
+async function humanOk(token, ip) {
+  if (!TURNSTILE_SECRET) return true; // not configured: skip
+  if (!token || typeof token !== 'string') return false;
+  try {
+    const r = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ secret: TURNSTILE_SECRET, response: token.slice(0, 2048), remoteip: ip }),
+      signal: AbortSignal.timeout(8000),
+    });
+    return !!(await r.json()).success;
+  } catch (e) { console.error('turnstile error', e.message); return false; }
+}
+
 // ---- public: lead intake ----
 const corsFor = (req) => {
   const o = req.headers.origin;
@@ -130,6 +145,7 @@ async function handleLead(req, res) {
   let d;
   try { d = await readJson(req); } catch { return send(res, 400, { error: 'Bad request' }, cors); }
   if (d.website) return send(res, 200, { ok: true }, cors); // honeypot: pretend success
+  if (!(await humanOk(d['cf-turnstile-response'], ip))) return send(res, 400, { error: 'Please complete the verification and try again.' }, cors);
   const lead = {
     name: clip(d.name, 100), phone: clip(d.phone, 40), email: clip(d.email, 120),
     town: clip(d.city || d.town, 80), service: clip(d.service, 100), size: clip(d.size, 40), message: clip(d.message, 2000),
