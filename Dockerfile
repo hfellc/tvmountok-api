@@ -4,6 +4,7 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
 COPY server.mjs mail.mjs ha.mjs ./
 COPY public ./public
+COPY assets ./assets
 ENV NODE_ENV=production DATA_DIR=/data PORT=8083
 VOLUME /data
 EXPOSE 8083
