@@ -5,6 +5,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { syncCalendar, haEnabled } from './ha.mjs';
 import { sendMail, ackEmail, confirmEmail, mailEnabled } from './mail.mjs';
 
 const env = process.env;
@@ -236,7 +237,14 @@ async function handleAdmin(req, res, url) {
       mailNote = r.ok ? `Confirmation emailed to ${after.email}` : `Confirmation email FAILED: ${r.error}`;
       q.event.run(id, 'email', mailNote);
     }
-    return send(res, 200, { ...after, events: q.events.all(id), mail: mailNote });
+    let calNote = '';
+    if (haEnabled && sets.length && (lead.status === 'confirmed' || after.status === 'confirmed')) {
+      const r = await syncCalendar(after);
+      if (!r.ok) calNote = `Calendar sync FAILED: ${r.error}`;
+      else if (r.action !== 'none' && r.action !== 'kept') calNote = `Calendar event ${r.action}`;
+      if (calNote) q.event.run(id, 'calendar', calNote);
+    }
+    return send(res, 200, { ...after, events: q.events.all(id), mail: [mailNote, calNote].filter(Boolean).join('. ') });
   }
   return send(res, 405, { error: 'Method not allowed' });
 }
