@@ -35,7 +35,7 @@ const signature = () => `<table role="presentation" cellpadding="0" cellspacing=
 <td valign="top" style="padding-right:20px;"><img src="cid:tvmok-logo" width="200" alt="TV Mount OK" style="display:block;width:200px;height:auto;border:0;outline:none;"></td>
 <td valign="top" style="border-left:1px solid #d7dbe6;padding-left:20px;font-family:${FONT};font-size:14px;line-height:22px;color:#2b2b33;">
 <b style="font-size:15px;color:#0b0b10;">TV Mount OK</b><br>
-<span style="color:#6b7080;">TV mounting &middot; Sapulpa, Tulsa &amp; 50 miles</span><br>
+<span style="color:#6b7080;">TV mounting &middot; Sapulpa, Tulsa &amp; surrounding area</span><br>
 ${PHONE ? `<a href="tel:${esc(telHref)}" style="color:#2a4bff;text-decoration:none;">${esc(PHONE)}</a><br>` : ''}
 <a href="mailto:contact@tvmountok.com" style="color:#2a4bff;text-decoration:none;">contact@tvmountok.com</a><br>
 <a href="https://tvmountok.com" style="color:#2a4bff;text-decoration:none;">tvmountok.com</a>
