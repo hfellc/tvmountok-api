@@ -1,6 +1,8 @@
 FROM node:24-alpine
 WORKDIR /app
-COPY package.json server.mjs ./
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
+COPY server.mjs mail.mjs ./
 COPY public ./public
 ENV NODE_ENV=production DATA_DIR=/data PORT=8083
 VOLUME /data

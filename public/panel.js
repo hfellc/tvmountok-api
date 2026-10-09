@@ -92,7 +92,7 @@ function render(l) {
     e.preventDefault(); save.disabled = true; toast.textContent = '';
     const f = Object.fromEntries(new FormData(form).entries());
     f.scheduled_start = fromLocalInput(f.scheduled_start); f.scheduled_end = fromLocalInput(f.scheduled_end);
-    try { render(await api('/api/admin/leads/' + l.id, { method: 'PATCH', body: JSON.stringify(f) })); $('#detail .toast').textContent = 'Saved'; refresh(); }
+    try { const out = await api('/api/admin/leads/' + l.id, { method: 'PATCH', body: JSON.stringify(f) }); render(out); $('#detail .toast').textContent = out.mail ? 'Saved. ' + out.mail : 'Saved'; refresh(); }
     catch (err) { toast.textContent = err.message; toast.style.color = 'var(--err)'; save.disabled = false; }
   });
   const note = el('textarea', { rows: 2, placeholder: 'Add a note' });
@@ -106,6 +106,15 @@ function render(l) {
     el('li', {}, el('time', { textContent: `${fmt(ev.at)} · ${ev.kind}` }), ev.body)));
   d.append(back, el('h2', { textContent: `#${l.id} ${l.name}` }), el('div', { className: 'muted', textContent: 'Received ' + fmt(l.created_at) }), acts);
   if (l.message) d.append(el('div', { className: 'msgbox', textContent: l.message }));
+  if (l.status === 'confirmed' && l.email && l.scheduled_start) {
+    const re = el('button', { className: 'btn', type: 'button', textContent: 'Resend confirmation email' });
+    re.addEventListener('click', async () => {
+      re.disabled = true;
+      try { await api(`/api/admin/leads/${l.id}/confirm-email`, { method: 'POST', body: '{}' }); render(await api('/api/admin/leads/' + l.id)); $('#detail .toast').textContent = 'Email sent'; }
+      catch (err) { re.disabled = false; toast.textContent = err.message; toast.style.color = 'var(--err)'; }
+    });
+    form.lastChild.append(re);
+  }
   d.append(form, el('h3', { textContent: 'Notes and history' }), note, addNote, tl);
 }
 

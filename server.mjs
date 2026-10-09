@@ -5,6 +5,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { sendMail, ackEmail, confirmEmail, mailEnabled } from './mail.mjs';
 
 const env = process.env;
 const PORT = Number(env.PORT || 8083);
@@ -159,6 +160,10 @@ async function handleLead(req, res) {
   if (lead.message) lines.push(lead.message.slice(0, 300));
   lines.push(`${PANEL_URL}/#${id}`);
   signal(lines.join('\n'));
+  if (lead.email && mailEnabled) {
+    const r = await sendMail(lead.email, ackEmail(lead));
+    q.event.run(id, 'email', r.ok ? `Acknowledgement emailed to ${lead.email}` : `Acknowledgement email FAILED: ${r.error}`);
+  }
 }
 
 // ---- admin API ----
@@ -174,7 +179,7 @@ const EDITABLE = {
 async function handleAdmin(req, res, url) {
   if (!validSession(req)) return send(res, 401, { error: 'Not signed in' });
   if (req.method !== 'GET' && req.headers['x-requested-with'] !== 'panel') return send(res, 403, { error: 'Forbidden' });
-  const m = /^\/api\/admin\/leads(?:\/(\d+))?(?:\/(notes))?$/.exec(url.pathname);
+  const m = /^\/api\/admin\/leads(?:\/(\d+))?(?:\/(notes|confirm-email))?$/.exec(url.pathname);
   if (url.pathname === '/api/admin/stats') {
     const out = Object.fromEntries(STATUSES.map((s) => [s, 0]));
     for (const r of q.counts.all()) out[r.status] = r.n;
@@ -203,6 +208,12 @@ async function handleAdmin(req, res, url) {
     q.event.run(id, 'note', body);
     return send(res, 200, { ok: true });
   }
+  if (req.method === 'POST' && m[2] === 'confirm-email') {
+    if (!lead.email || !lead.scheduled_start) return send(res, 400, { error: 'Needs an email and a start time' });
+    const r = await sendMail(lead.email, confirmEmail(lead));
+    q.event.run(id, 'email', r.ok ? `Confirmation emailed to ${lead.email}` : `Confirmation email FAILED: ${r.error}`);
+    return send(res, r.ok ? 200 : 502, r.ok ? { ok: true } : { error: r.error });
+  }
   if (req.method === 'PATCH') {
     const sets = []; const args = []; const changes = [];
     for (const [k, fn] of Object.entries(EDITABLE)) {
@@ -217,7 +228,15 @@ async function handleAdmin(req, res, url) {
       db.prepare(`UPDATE leads SET ${sets.join(', ')} WHERE id = ?`).run(...args, id);
       q.event.run(id, 'update', changes.join('; '));
     }
-    return send(res, 200, { ...q.get.get(id), events: q.events.all(id) });
+    const after = q.get.get(id);
+    const becameConfirmed = after.status === 'confirmed' && (lead.status !== 'confirmed' || lead.scheduled_start !== after.scheduled_start);
+    let mailNote = '';
+    if (becameConfirmed && after.scheduled_start && after.email && mailEnabled && d.send_email !== false) {
+      const r = await sendMail(after.email, confirmEmail(after));
+      mailNote = r.ok ? `Confirmation emailed to ${after.email}` : `Confirmation email FAILED: ${r.error}`;
+      q.event.run(id, 'email', mailNote);
+    }
+    return send(res, 200, { ...after, events: q.events.all(id), mail: mailNote });
   }
   return send(res, 405, { error: 'Method not allowed' });
 }
